@@ -99,5 +99,53 @@ describe("staking-program", () => {
       .rpc();
 
     console.log("Your transaction signature", tx);
+  });
+
+  it("Unstake", async () => {
+    let userTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      payer.publicKey
+    )
+
+    let [vaultAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("vault")],
+      program.programId
+    )
+
+    let [stakeInfo] = PublicKey.findProgramAddressSync(
+      [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
+      program.programId
+    )
+
+    let [stakeAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("token"), payer.publicKey.toBuffer()],
+      program.programId
+    )
+
+    await mintTo(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      vaultAccount,
+      payer.payer,
+      1e21
+    )
+
+    const tx = await program.methods
+      .unstake()
+      .signers([payer.payer])
+      .accounts({
+        stakeAccount: stakeAccount,
+        stakeInfoAccount: stakeInfo,
+        userTokenAccount: userTokenAccount.address,
+        tokenVaultAccount: vaultAccount,
+        signer: payer.publicKey,
+        mint: mintKeyPair.publicKey,
+      })
+      .rpc();
+
+    console.log("Your transaction signature", tx);
   })
 });
