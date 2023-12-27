@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { StakingProgram } from "../target/types/staking_program";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { createMint } from "@solana/spl-token";
+import { createMint, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
 
 describe("staking-program", () => {
   // Configure the client to use the local cluster.
@@ -52,4 +52,52 @@ describe("staking-program", () => {
       .rpc();
     console.log("Your transaction signature", tx);
   });
+
+  it("Stake", async () => {
+    let userTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      payer.publicKey
+    )
+
+    await mintTo(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      userTokenAccount.address,
+      payer.payer,
+      1e11
+    )
+
+    let [stakeInfo] = PublicKey.findProgramAddressSync(
+      [Buffer.from("stake_info"), payer.publicKey.toBuffer()],
+      program.programId
+    )
+
+    let [stakeAccount] = PublicKey.findProgramAddressSync(
+      [Buffer.from("token"), payer.publicKey.toBuffer()],
+      program.programId
+    )
+
+    await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer.payer,
+      mintKeyPair.publicKey,
+      payer.publicKey
+    )
+
+    const tx = await program.methods
+      .stake(new anchor.BN(1))
+      .signers([payer.payer])
+      .accounts({
+        stakeInfoAccount: stakeInfo,
+        stakeAccount: stakeAccount,
+        userTokenAccount: userTokenAccount.address,
+        mint: mintKeyPair.publicKey
+      })
+      .rpc();
+
+    console.log("Your transaction signature", tx);
+  })
 });
